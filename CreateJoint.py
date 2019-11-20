@@ -33,6 +33,9 @@ class CreateRevoluteJointForm(QtGui.QDialog):
         self.initUI()
 
     def initUI(self):
+
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+
         option1Button = QtGui.QPushButton("OK")
         option1Button.clicked.connect(self.onOK)
         option2Button = QtGui.QPushButton("Cancel")
@@ -107,6 +110,7 @@ class CreateRevoluteJointForm(QtGui.QDialog):
         mainLayout.addLayout(hbox)
         mainLayout.addWidget(buttonBox)
         self.setLayout(mainLayout)
+        self.form = mainLayout
         # define window   xLoc,yLoc,xDim,yDim
         self.retStatus = 0
 
@@ -270,7 +274,8 @@ class CreateJoint:
         elif self.form.retStatus == 2:
             print("abort")
 
-        self.tab.removeTab(self.tab.indexOf(self.form))
+        FreeCADGui.Control.closeDialog()
+        # self.tab.removeTab(self.tab.indexOf(self.form))
 
     def IsActive(self):
         """Here you can define if the command must be active or not (greyed) if certain conditions

@@ -24,3 +24,7 @@ Pull Requests are welcome.
 Export Test:
 
 import ExportURDF; reload(ExportURDF).export_urdf()
+
+or Python3:
+
+import importlib as imp; import ExportURDF; imp.reload(ExportURDF).export_urdf()

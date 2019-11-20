@@ -41,6 +41,28 @@ joint_mapping = {
     'ContinuousJoint': 'continuous'
 }
 
+def get_parent_frame(obj):
+    parent = obj.Parent
+
+    # b = FreeCAD.ActiveDocument.getObject()
+
+    objs = FreeCAD.ActiveDocument.Objects
+    for o in objs:
+        if "Joint" in o.Name:
+            if o.Child == parent:
+                return o
+    return None
+
+def get_parent_joint(obj):
+    link_name = obj.Name
+    # b = FreeCAD.ActiveDocument.getObject()
+
+    objs = FreeCAD.ActiveDocument.Objects
+    for o in objs:
+        if "Joint" in o.Name:
+            if o.Child == link_name:
+                return o
+    return None
 
 class URDFExportStatic:
     """RC_URDFExport"""
@@ -58,7 +80,6 @@ class URDFExportStatic:
         }
 
     def Activated(self):
-        print("Scaling mesh")
 
         soup = BeautifulSoup(features="xml")
         robot = soup.new_tag('robot')
@@ -82,31 +103,32 @@ class URDFExportStatic:
 
         objs = FreeCAD.ActiveDocument.Objects
         for obj in objs:
-            print(obj.Name)
-            print((obj.TypeId))
             if "Joint" in obj.Name:
                 pos = obj.Shape.Placement
-                pos.Base *= 0.001
+                computed_pos = pos.Base * 0.001
+
+                parent_frame = get_parent_frame(obj)
+                if parent_frame:
+                    computed_pos -= (parent_frame.Shape.Placement.Base * 0.001)
 
                 joint_type = None
                 for jt_loop in joint_mapping:
                     if obj.Name.startswith(jt_loop):
-                        joint_type = jt_loop
+                        joint_type = joint_mapping[jt_loop]
                         break
 
                 if not joint_type:
                     raise RuntimeError("No Joint Type found!")
 
-                joint_elem = soup.new_tag('joint', 
-                    type=joint_mapping[obj.Name]
-                )
+                joint_elem = soup.new_tag('joint', type=joint_type)
+
                 if hasattr(obj, 'Label') and obj.Label != '':
                     joint_elem.attrs['name'] = obj.Label
                 else:
                     joint_elem.attrs['name'] = bodyLabelFromObjStr(obj.Parent) + bodyLabelFromObjStr(obj.Child)
 
                 joint_origin = soup.new_tag('origin',
-                    xyz=" ".join([str(x) for x in pos.Base]),
+                    xyz=" ".join([str(x) for x in computed_pos]),
                     rpy=" ".join([str(x) for x in pos.Rotation.toEuler()[::-1]])
                 )
                 joint_elem.append(joint_origin)
@@ -121,7 +143,7 @@ class URDFExportStatic:
                     axis = soup.new_tag('axis', xyz=" ".join((str(x) for x in obj.Axis)))
                     joint_elem.append(axis)
 
-                if obj.Name in ('PrismaticJoint', 'RevoluteJoint'): 
+                if joint_type in ('revolute', 'prismatic'):
                     limit_tag = soup.new_tag('limit',
                         velocity=obj.VelocityLimit,
                         effort=obj.EffortLimit
@@ -136,7 +158,6 @@ class URDFExportStatic:
                 robot.append(joint_elem)
 
             if obj.TypeId == "PartDesign::Body" or obj.TypeId == "Part::Box" or obj.TypeId == "Part::Feature":
-                print("Link: " + obj.Name + " with label " + obj.Label + " detected!")
                 name = obj.Label
                 mass = obj.Shape.Mass
                 inertia = obj.Shape.MatrixOfInertia
@@ -156,25 +177,32 @@ class URDFExportStatic:
                 # export shape as mesh (stl)
                 mesh_file_name = os.path.join(self.mesh_path, name + ".stl")
                 # disable export of mesh for now
-                # if not os.path.exists(mesh_file_name):
-                #     Mesh.export([obj], mesh_file_name)
+                if not os.path.exists(mesh_file_name):
+                    Mesh.export([obj], mesh_file_name)
+ 
+                    print("About to scale {}".format(mesh_file_name))
+                    # import stl and translate/scale
+                    # scaling, millimeter -> meter
+                    mesh = Mesh.read(mesh_file_name)
 
-                # import stl and translate/scale
-                # mesh = Mesh.read(mesh_file_name)
+                    pj = get_parent_joint(obj)
+                    if pj:
+                        mesh.translate(*-pj.Shape.Placement.Base)
 
-                # # scaling, millimeter -> meter
-                # mat = FreeCAD.Matrix()
-                # mat.scale(0.001, 0.001, 0.001)
+                    mat = FreeCAD.Matrix()
+                    mat.scale(0.001, 0.001, 0.001)
 
-                # # apply scaling
-                # mesh.transform(mat)
 
-                # # move origo to center of mass
-                # pos.move(com * -1)
-                # mesh.Placement.Base *= 0.001
+                    # apply scaling
+                    mesh.transform(mat)
 
-                # # save scaled and transformed mesh as stl
-                # mesh.write(mesh_file_name)
+                    # # move origo to center of mass
+                    # pos.move(com * -1)
+                    # mesh.Placement.Base -= mesh.CenterOfMass
+                    # mesh.Placement.Base = (0, 0,)
+
+                    # save scaled and transformed mesh as stl
+                    mesh.write(mesh_file_name)
 
                 link = soup.new_tag('link')
                 link.attrs['name'] = name
@@ -189,14 +217,13 @@ class URDFExportStatic:
                 visual.append(visual_origin)
 
                 visual_geom = soup.new_tag('geometry')
-                visual_mesh = soup.new_tag('mesh', filename=mesh_file_name)
+                visual_mesh = soup.new_tag('mesh', filename='file://' + mesh_file_name)
                 visual_geom.append(visual_mesh)
                 visual.append(visual_geom)
 
                 link.append(visual)
 
                 robot.append(link)
-                print((soup.prettify()))
 
                 # self.srdf_file.write("<inertial>\n")
                 # self.srdf_file.write(
