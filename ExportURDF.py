@@ -58,7 +58,7 @@ class URDFExportStatic:
         }
 
     def Activated(self):
-        print "Scaling mesh"
+        print("Scaling mesh")
 
         soup = BeautifulSoup(features="xml")
         robot = soup.new_tag('robot')
@@ -82,8 +82,8 @@ class URDFExportStatic:
 
         objs = FreeCAD.ActiveDocument.Objects
         for obj in objs:
-            print obj.Name
-            print(obj.TypeId)
+            print(obj.Name)
+            print((obj.TypeId))
             if "Joint" in obj.Name:
                 pos = obj.Shape.Placement
                 pos.Base *= 0.001
@@ -136,7 +136,7 @@ class URDFExportStatic:
                 robot.append(joint_elem)
 
             if obj.TypeId == "PartDesign::Body" or obj.TypeId == "Part::Box" or obj.TypeId == "Part::Feature":
-                print "Link: " + obj.Name + " with label " + obj.Label + " detected!"
+                print("Link: " + obj.Name + " with label " + obj.Label + " detected!")
                 name = obj.Label
                 mass = obj.Shape.Mass
                 inertia = obj.Shape.MatrixOfInertia
@@ -196,7 +196,7 @@ class URDFExportStatic:
                 link.append(visual)
 
                 robot.append(link)
-                print(soup.prettify())
+                print((soup.prettify()))
 
                 # self.srdf_file.write("<inertial>\n")
                 # self.srdf_file.write(

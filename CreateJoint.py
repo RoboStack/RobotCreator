@@ -140,7 +140,7 @@ class CreateRevoluteJointForm(QtGui.QDialog):
                 self.rotZ.setText(str(normal[2]))
 
         for el in selection:
-            print (el.Label)
+            print((el.Label))
         self.parent_label.setText("Parent: " + selection[0].Label)
         self.child_label.setText("Child: " + selection[1].Label)
         if len(selection) == 3:
@@ -210,7 +210,7 @@ class CreateJoint:
     """RC_CreateJoint"""
 
     def GetResources(self):
-        print FreeCAD.getUserAppDataDir() + "Mod" + "/RobotCreator/icons/createJoint.png"
+        print(FreeCAD.getUserAppDataDir() + "Mod" + "/RobotCreator/icons/createJoint.png")
         return {
             "Pixmap": os.path.join(
                 str(FreeCAD.getUserAppDataDir()),
@@ -223,16 +223,17 @@ class CreateJoint:
         }
 
     def Activated(self):
-        print "creating a joint"
+        print("creating a joint")
 
         self.selection = Gui.Selection.getSelection()
         if len(self.selection) >= 2:
             self.form = CreateRevoluteJointForm(self.ok_clicked)
-            self.tab = getComboView()
-            self.tab.addTab(self.form, "Create Joint")
-            self.tab.setCurrentWidget(self.form)
+            FreeCADGui.Control.showDialog(self.form)
+            # self.tab = getComboView()
+            # self.tab.addTab(self.form, "Create Joint")
+            # self.tab.setCurrentWidget(self.form)
         else:
-            print "Only support selection of two elements on two different objects"
+            print("Only support selection of two elements on two different objects")
 
     def ok_clicked(self):
         if self.form.retStatus == 1:
@@ -267,7 +268,7 @@ class CreateJoint:
             App.ActiveDocument.recompute()
 
         elif self.form.retStatus == 2:
-            print "abort"
+            print("abort")
 
         self.tab.removeTab(self.tab.indexOf(self.form))
 

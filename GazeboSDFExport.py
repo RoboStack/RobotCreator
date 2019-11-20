@@ -47,7 +47,7 @@ class GazeboSDFExport:
         }
 
     def Activated(self):
-        print "Scaling mesh"
+        print("Scaling mesh")
 
         # you might want to change this to where you want your exported mesh/sdf to be located.
         robotName = "testing"
@@ -70,9 +70,9 @@ class GazeboSDFExport:
 
         objs = FreeCAD.ActiveDocument.Objects
         for obj in objs:
-            print obj.Name
+            print(obj.Name)
             if "Joint" in obj.Name:
-                print "Joint: " + obj.Name + " with label " + obj.Label + " detected!"
+                print("Joint: " + obj.Name + " with label " + obj.Label + " detected!")
                 pos = obj.Shape.Placement
                 pos.Base *= 0.001
                 sdfFile.write(
@@ -102,7 +102,7 @@ class GazeboSDFExport:
                 sdfFile.write(" </joint>\n")
 
             if obj.TypeId == "PartDesign::Body" or obj.TypeId == "Part::Box":
-                print "Link: " + obj.Name + " with label " + obj.Label + " detected!"
+                print("Link: " + obj.Name + " with label " + obj.Label + " detected!")
                 name = obj.Label
                 mass = obj.Shape.Mass
                 inertia = obj.Shape.MatrixOfInertia
