@@ -1,8 +1,10 @@
 from FreeCAD import Gui
 from FreeCAD import Base
-import FreeCAD, FreeCADGui, Part, os, math
+import FreeCAD, FreeCADGui, Part
 import Mesh, BuildRegularGeoms
-import os, sys, Mesh
+import os, sys, math
+
+sys.path.append('/home/wolfv/.FreeCAD/Mod/')
 from bs4 import BeautifulSoup
 
 def float_to_str(f):
@@ -26,12 +28,18 @@ def bodyFromPad(a):
 
 
 def bodyLabelFromObjStr(a):
-    b = str2obj(a)
-    c = bodyFromPad(b)
-    if c is not None:
-        return c.Label
+    b = FreeCAD.ActiveDocument.getObject(a)
+    if b is not None:
+        return b.Label
     else:
         return "##NONE##"
+
+joint_mapping = {
+    'RevoluteJoint': 'revolute',
+    'PrismaticJoint': 'prismatic',
+    'FixedJoint': 'fixed',
+    'ContinuousJoint': 'continuous'
+}
 
 
 class URDFExportStatic:
@@ -77,61 +85,55 @@ class URDFExportStatic:
             print obj.Name
             print(obj.TypeId)
             if "Joint" in obj.Name:
-                print "Joint: " + obj.Name + " with label " + obj.Label + " detected!"
                 pos = obj.Shape.Placement
                 pos.Base *= 0.001
 
+                joint_type = None
+                for jt_loop in joint_mapping:
+                    if obj.Name.startswith(jt_loop):
+                        joint_type = jt_loop
+                        break
+
+                if not joint_type:
+                    raise RuntimeError("No Joint Type found!")
+
                 joint_elem = soup.new_tag('joint', 
-                    type="revolute"
+                    type=joint_mapping[obj.Name]
                 )
-                joint_elem.attrs['name'] = bodyLabelFromObjStr(obj.Parent) + bodyLabelFromObjStr(obj.Child)
+                if hasattr(obj, 'Label') and obj.Label != '':
+                    joint_elem.attrs['name'] = obj.Label
+                else:
+                    joint_elem.attrs['name'] = bodyLabelFromObjStr(obj.Parent) + bodyLabelFromObjStr(obj.Child)
 
-                joint_pose = soup.new_tag('pose')
-                joint_pose.string = "{} {} {} 0 0 0".format(*pos.Base)
-                joint_elem.append(joint_pose)
+                joint_origin = soup.new_tag('origin',
+                    xyz=" ".join([str(x) for x in pos.Base]),
+                    rpy=" ".join([str(x) for x in pos.Rotation.toEuler()[::-1]])
+                )
+                joint_elem.append(joint_origin)
 
-                parent_tag = soup.new_tag('parent')
-                parent_tag.string = bodyLabelFromObjStr(obj.Parent)
-                joint_pose.append(parent_tag)
+                parent_tag = soup.new_tag('parent', link=bodyLabelFromObjStr(obj.Parent))
+                joint_elem.append(parent_tag)
 
-                child_tag = soup.new_tag('child')
-                child_tag.string = bodyLabelFromObjStr(obj.Child)
-                joint_pose.append(child_tag)
+                child_tag = soup.new_tag('child', link=bodyLabelFromObjStr(obj.Child))
+                joint_elem.append(child_tag)
 
-                axis = soup.new_tag('axis')
-                axis_xyz = soup.new_tag('xyz')
-                axis_xyz.string = '0 0 1'
-                joint_elem.append(axis)
+                if hasattr(obj, 'Axis'):
+                    axis = soup.new_tag('axis', xyz=" ".join((str(x) for x in obj.Axis)))
+                    joint_elem.append(axis)
+
+                if obj.Name in ('PrismaticJoint', 'RevoluteJoint'): 
+                    limit_tag = soup.new_tag('limit',
+                        velocity=obj.VelocityLimit,
+                        effort=obj.EffortLimit
+                    )
+
+                    if obj.UpperLimit:
+                        limit_tag['upper'] = obj.UpperLimit
+                    if obj.LowerLimit:
+                        limit_tag['lower'] = obj.LowerLimit
+                    joint_elem.append(limit_tag)
 
                 robot.append(joint_elem)
-
-                print(soup.prettify())
-
-                # self.srdf_file.write(
-                #     ' <joint name="'
-                #     + bodyLabelFromObjStr(obj.Parent)
-                #     + bodyLabelFromObjStr(obj.Child)
-                #     + '" type="revolute">\n'
-                # )
-                # self.srdf_file.write(
-                #     "   <pose>"
-                #     + str(pos.Base[0])
-                #     + " "
-                #     + str(pos.Base[1])
-                #     + " "
-                #     + str(pos.Base[2])
-                #     + " 0 0 0 </pose>\n"
-                # )
-                # self.srdf_file.write(
-                #     "   <child>" + bodyLabelFromObjStr(obj.Child) + "</child>\n"
-                # )
-                # self.srdf_file.write(
-                #     "   <parent>" + bodyLabelFromObjStr(obj.Parent) + "</parent>\n"
-                # )
-                # self.srdf_file.write("   <axis>")
-                # self.srdf_file.write("     <xyz>0 0 1</xyz>")
-                # self.srdf_file.write("   </axis>\n")
-                # self.srdf_file.write(" </joint>\n")
 
             if obj.TypeId == "PartDesign::Body" or obj.TypeId == "Part::Box" or obj.TypeId == "Part::Feature":
                 print "Link: " + obj.Name + " with label " + obj.Label + " detected!"
@@ -177,9 +179,9 @@ class URDFExportStatic:
                 link = soup.new_tag('link')
                 link.attrs['name'] = name
 
-                link_pose = soup.new_tag('pose')
-                link_pose.string = "0 0 0 {} {} {} {}".format(*[deg2rad(x) for x in pos.Rotation.Q])
-                link.append(link_pose)
+                # link_pose = soup.new_tag('pose')
+                # link_pose.string = "0 0 0 {} {} {} {}".format(*[deg2rad(x) for x in pos.Rotation.Q])
+                # link.append(link_pose)
 
                 visual = soup.new_tag('visual')
                 # visual_origin = soup.new_tag('origin', xyz=" ".join(pos.Base), rpy=" ".join(pos.Rotation.toEuler()[::-1]))

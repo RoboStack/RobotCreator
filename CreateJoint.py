@@ -1,13 +1,13 @@
 from FreeCAD import Gui
 from FreeCAD import Base
-import FreeCAD, FreeCADGui, Part, os, math
+import FreeCAD, FreeCADGui, Part
+import sys, os, math
 
 import FreeCAD as App
 
 import FreeCADGui
 import FreeCAD
 import Part
-import sys, os
 from PySide import QtGui, QtCore
 
 # create new Tab in ComboView
@@ -45,6 +45,9 @@ class CreateRevoluteJointForm(QtGui.QDialog):
         self.parent_label = QtGui.QLabel("Parent")
         self.child_label = QtGui.QLabel("Child")
         self.joint_label = QtGui.QLabel("Joint")
+        self.joint_type_select = QtGui.QComboBox()
+
+        self.joint_type_select.addItems(['Revolute', 'Continuous', 'Prismatic', 'Fixed']) #, 'Floating', 'Planar'])
 
         self.button_set_to_selection = QtGui.QPushButton("Set to current selection")
         self.button_set_to_selection.clicked.connect(self.on_set_to_selection)
@@ -52,6 +55,7 @@ class CreateRevoluteJointForm(QtGui.QDialog):
         hbox_pcj.addWidget(self.parent_label)
         hbox_pcj.addWidget(self.child_label)
         hbox_pcj.addWidget(self.joint_label)
+        hbox_pcj.addWidget(self.joint_type_select)
         hbox_pcj.addWidget(self.button_set_to_selection)
 
         onlyDouble = QtGui.QDoubleValidator()
@@ -145,23 +149,51 @@ class CreateRevoluteJointForm(QtGui.QDialog):
             self.joint_label.setText("Joint: <empty>")
 
 
-class Joint:
-    def __init__(self, obj, parent, child):
-        '''"App two point properties"'''
+class JointBase(object):
+
+    def __init__(self, obj, parent, child, set_proxy=True):
         obj.addProperty("App::PropertyString", "Parent", "Joint").Parent = parent.Name
         obj.addProperty("App::PropertyString", "Child", "Joint").Child = child.Name
-        obj.addProperty(
-            "App::PropertyAngle", "Angle1", "Joint", "Angle1 of joint"
-        ).Angle1 = 90
-        obj.addProperty(
-            "App::PropertyVector", "axis", "rotation", "End point"
-        ).axis = FreeCAD.Vector(1, 0, 0)
-        obj.Proxy = self
+        if set_proxy:
+            obj.Proxy = self
 
     def execute(self, fp):
         """"Print a short message when doing a recomputation, this method is mandatory" """
         fp.Shape = Part.makeSphere(1)
 
+
+class LimitedJoint(JointBase):
+    def __init__(self, obj, parent, child):
+        super(LimitedJoint, self).__init__(obj, parent, child, False)
+
+        obj.addProperty(
+            "App::PropertyVector", "Axis", "Joint", "Axis of Rotation"
+        ).Axis = FreeCAD.Vector(1, 0, 0)
+
+        obj.addProperty("App::PropertyString", "LowerLimit", "Limits", "Lower Limit").LowerLimit = ""
+        obj.addProperty("App::PropertyString", "UpperLimit", "Limits", "Upper Limit").UpperLimit = ""
+        obj.addProperty("App::PropertyString", "EffortLimit", "Limits", "Effort Limit").EffortLimit = "100"
+        obj.addProperty("App::PropertyString", "VelocityLimit", "Limits", "Velocity Limit").VelocityLimit = "100"
+        obj.Proxy = self
+
+
+class RevoluteJoint(LimitedJoint):
+    pass
+
+class PrismaticJoint(LimitedJoint):
+    pass
+
+class FixedJoint(JointBase):
+    pass
+
+class ContinuousJoint(JointBase):
+    def __init__(self, obj, parent, child):
+        super(ContinuousJoint, self).__init__(obj, parent, child, False)
+
+        obj.addProperty(
+            "App::PropertyVector", "Axis", "Joint", "Axis of Rotation"
+        ).Axis = FreeCAD.Vector(1, 0, 0)
+        obj.Proxy = self
 
 class ViewProviderJoint:
     def __init__(self, obj):
@@ -204,20 +236,33 @@ class CreateJoint:
 
     def ok_clicked(self):
         if self.form.retStatus == 1:
-            j = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "Joint")
-            Joint(j, self.selection[0], self.selection[1])
-            # FreeCAD.Console.PrintMessage("Setting Joint to XYZ: %s %s %s\n" % (self.form.posX.text(), self.form.posY.text(), self.form.posZ.text()))
-            # FreeCAD.Console.PrintMessage("Setting Joint to RPY: %s %s %s\n" % (self.form.rotX.text(), self.form.rotY.text(), self.form.rotZ.text()))
+            jt = self.form.joint_type_select.currentText()
+            if jt == 'Revolute':
+                j = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "RevoluteJoint")
+                RevoluteJoint(j, self.selection[0], self.selection[1])
+            elif jt == 'Prismatic':
+                j = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "PrismaticJoint")
+                PrismaticJoint(j, self.selection[0], self.selection[1])
+            elif jt == 'Fixed':
+                j = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "FixedJoint")
+                FixedJoint(j, self.selection[0], self.selection[1])
+            elif jt == 'Continuous':
+                j = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "ContinuousJoint")
+                ContinuousJoint(j, self.selection[0], self.selection[1])
+
             j.Placement.Base = FreeCAD.Vector(
                 float(self.form.posX.text()),
                 float(self.form.posY.text()),
                 float(self.form.posZ.text()),
             )
-            j.axis = FreeCAD.Vector(
-                float(self.form.rotX.text()),
-                float(self.form.rotY.text()),
-                float(self.form.rotZ.text()),
-            )
+
+            if hasattr(j, 'Axis'):
+                j.Axis = FreeCAD.Vector(
+                    float(self.form.rotX.text()),
+                    float(self.form.rotY.text()),
+                    float(self.form.rotZ.text()),
+                )
+
             ViewProviderJoint(j.ViewObject)
             App.ActiveDocument.recompute()
 
