@@ -10,9 +10,6 @@ import FreeCAD
 import Part
 from PySide import QtGui, QtCore
 
-# create new Tab in ComboView
-from PySide import QtGui, QtCore
-
 def getComboView():
     mw = Gui.getMainWindow()
     dw = mw.findChildren(QtGui.QDockWidget)

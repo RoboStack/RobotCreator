@@ -1,6 +1,7 @@
 from FreeCAD import Gui
 from FreeCAD import Base
 import FreeCAD, FreeCADGui, Part
+from PySide import QtGui
 import Mesh, BuildRegularGeoms
 import os, sys, math
 
@@ -81,6 +82,8 @@ class URDFExportStatic:
 
     def Activated(self):
 
+        selected_directory = QtGui.QFileDialog.getExistingDirectory()
+
         soup = BeautifulSoup(features="xml")
         robot = soup.new_tag('robot')
         robot.attrs['name'] = "testing"
@@ -88,7 +91,7 @@ class URDFExportStatic:
 
         # you might want to change this to where you want your exported mesh/sdf to be located.
         self.robot_name = "testing"
-        self.output_folder = os.path.expanduser("~/URDF/")
+        self.output_folder = os.path.expanduser(selected_directory)
 
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)

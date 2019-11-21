@@ -38,8 +38,8 @@ static char * C:\Program Files\FreeCAD 0_15\Mod\Fasteners\wbicon_xpm[] = {
         import GazeboSDFExportStatic, GazeboSDFExport, CreateJoint, ExportURDF  # import here all the needed files that create your FreeCAD commands
 
         self.list = [
-            "RC_GazeboSDFExportStatic",
-            "RC_GazeboSDFExport",
+            # "RC_GazeboSDFExportStatic",
+            # "RC_GazeboSDFExport",
             "RC_CreateJoint",
             "RC_ExportURDF",
         ]  # A list of command names created in the line above
@@ -70,6 +70,5 @@ static char * C:\Program Files\FreeCAD 0_15\Mod\Fasteners\wbicon_xpm[] = {
     def GetClassName(self):
         # this function is mandatory if this is a full python workbench
         return "Gui::PythonWorkbench"
-
 
 Gui.addWorkbench(RobotCreator())

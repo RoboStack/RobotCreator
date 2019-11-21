@@ -1,30 +1,38 @@
 # FreeCAD RobotCreator Workbench
-FreeCAD Workbench for URDF &amp; SDF and Gazebo
 
-## Important Note 
-THIS PROJECT IS IN EARLY DEVELOPMENT (AKA it's not fully functional yet)
+FreeCAD Workbench to create URDF files from e.g. STP or other CAD file formats.
+*This project works for simple robots right now, but it hasn't been fully tested.*
 
-### What works?  
-**Sdf export of links**  
-* correctly scaled mesh exported as stl  
-* inertia and collision geometry is based on stl  
-  
-**Joint export (in progress)**  
-* can create joints objects and move them around in FreeCAD  
-* can only be exported as a hinge joint arond x axis for the momemnt  
-* GUI in progress  
-  
-[![FreeCAD_RobotCreator_Workbench_Youtube_clip](https://img.youtube.com/vi/a7DPU1K4rS8/0.jpg)](https://www.youtube.com/watch?v=a7DPU1K4rS8)
+## Installation
+
+In order to install this FreeCAD plugin, install FreeCAD and clone this repository into the `~/.FreeCAD/Mod/` folder. Like so:
+
+```
+mkdir -p ~/.FreeCAD/Mod/
+cd ~/.FreeCAD/Mod/
+git clone https://github.com/RoboStack/RobotCreator
+```
+
+Then restart FreeCAD and the RobotCreator Workbench should appear.
+Note: for the URDF export, you also need to have `BeautifulSoup4` and `lxml` installed.
+
+![Robot Creator](docs/images/screenshot.png)
+
+The robot, running in RViz.
+
+![Robot Creator](docs/images/screenshot_rviz.png)
 
 ## Feedback
-Please direct all feedback to the dedicated FreeCAD forum thread 
-https://forum.freecadweb.org/viewtopic.php?f=10&t=15442  
-Pull Requests are welcome. 
 
-Export Test:
+Please open issues on this repository for questions, or suggestions.
 
-import ExportURDF; reload(ExportURDF).export_urdf()
+## Development
 
-or Python3:
+You can test e.g. the export function by opening the Python console in FreeCAD and executing:
 
+```
+# python 3:
 import importlib as imp; import ExportURDF; imp.reload(ExportURDF).export_urdf()
+# python 2:
+import ExportURDF; reload(ExportURDF).export_urdf()
+```
